@@ -1,2 +1,0 @@
--- Migration 001: Initial Schema for EduIntelli
--- Run database/schema.sql

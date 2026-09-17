@@ -5,6 +5,14 @@ build/
 .cache/
 .tsbuildinfo
 
+# Python & Testing artifacts
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
 # Environment
 .env
 .env.local
@@ -14,7 +22,6 @@ build/
 *.db
 *.sqlite
 *.sqlite3
-database/local.sqlite
 
 # Logs
 npm-debug.log*
@@ -22,7 +29,7 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
-# OS files
+# OS & IDE files
 .DS_Store
 Thumbs.db
 .idea/

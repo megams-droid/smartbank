@@ -1,29 +1,24 @@
 {
-  "name": "edu-intelli-monorepo",
+  "name": "smartbank-ai",
   "version": "1.0.0",
-  "description": "EduIntelli — AI-Powered Academic Intelligence Platform",
+  "description": "SmartBank AI — AI-Powered Smart Banking & Financial Intelligence Platform",
   "private": true,
-  "workspaces": [
-    "frontend",
-    "backend"
-  ],
   "scripts": {
-    "dev": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"cyan.bold,magenta.bold\" \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
-    "build": "npm run build --workspace=backend && npm run build --workspace=frontend",
-    "start": "npm run start --workspace=backend",
-    "test": "npm run test --workspace=backend && npm run test --workspace=frontend",
-    "seed": "npm run seed --workspace=backend"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
+    "dev:backend": "source venv/bin/activate && uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "build:frontend": "npm run build --prefix frontend",
+    "test:backend": "source venv/bin/activate && PYTHONPATH=. pytest backend/tests -v",
+    "ml:train": "source venv/bin/activate && python ml/training/generate_synthetic_data.py && python ml/training/train_categorizer.py && python ml/training/train_anomaly_detector.py"
   },
   "keywords": [
-    "education",
+    "fintech",
+    "banking",
     "ai",
-    "academic-intelligence",
-    "early-intervention",
-    "analytics"
+    "machine-learning",
+    "anomaly-detection",
+    "forecasting",
+    "explainable-ai"
   ],
-  "author": "EduIntelli Team",
+  "author": "SmartBank AI Engineering Team",
   "license": "MIT"
 }

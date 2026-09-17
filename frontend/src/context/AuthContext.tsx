@@ -1,90 +1,99 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { api } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  isLoading: boolean;
-  login: (email: string, password?: string) => Promise<void>;
-  quickLoginAs: (role: UserRole, customStudentId?: string) => Promise<void>;
-  logout: () => void;
   isAuthenticated: boolean;
+  isAdmin: boolean;
+  loading: boolean;
+  login: (credentials: { email: string; password: string }) => Promise<void>;
+  register: (data: { email: string; full_name: string; password: string; phone?: string }) => Promise<void>;
+  demoLogin: (role?: 'CUSTOMER' | 'ADMIN') => Promise<void>;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('eduintelli_token'));
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<User | null>(() => {
+    const saved = localStorage.getItem('smartbank_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [token, setToken] = useState<string | null>(() => localStorage.getItem('smartbank_token'));
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Check current session on initial mount
   useEffect(() => {
-    async function loadUser() {
-      const storedToken = localStorage.getItem('eduintelli_token');
-      if (!storedToken) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const res = await api.getMe();
-        if (res.success && res.user) {
-          setUser(res.user);
-        } else {
-          localStorage.removeItem('eduintelli_token');
-          setToken(null);
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('smartbank_token');
+      if (storedToken) {
+        try {
+          const profile = await api.getProfile();
+          setUser(profile);
+          localStorage.setItem('smartbank_user', JSON.stringify(profile));
+        } catch {
+          api.clearToken();
           setUser(null);
+          setToken(null);
         }
-      } catch (err) {
-        console.warn('Session verification failed, logging out:', err);
-        localStorage.removeItem('eduintelli_token');
-        setToken(null);
-        setUser(null);
-      } finally {
-        setIsLoading(false);
       }
-    }
+      setLoading(false);
+    };
 
-    loadUser();
+    initAuth();
   }, []);
 
-  const login = async (email: string, password: string = 'Demo@123') => {
-    setIsLoading(true);
+  const login = async (credentials: { email: string; password: string }) => {
+    setLoading(true);
     try {
-      const res = await api.login({ email, password });
-      if (res.success && res.token) {
-        localStorage.setItem('eduintelli_token', res.token);
-        setToken(res.token);
-        setUser(res.user);
-      } else {
-        throw new Error(res.message || 'Login failed');
-      }
+      const res = await api.login(credentials);
+      setUser(res.user);
+      setToken(res.access_token);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const quickLoginAs = async (role: UserRole, customStudentId?: string) => {
-    let email = 'student@demo.com';
-    if (role === 'TEACHER') {
-      email = 'teacher@demo.com';
-    } else if (role === 'ADMIN') {
-      email = 'admin@demo.com';
-    } else if (customStudentId === 'std-02') {
-      email = 'jordan.hayes@demo.com'; // High Risk student
-    } else if (customStudentId === 'std-03') {
-      email = 'priya.sharma@demo.com'; // Medium Risk student
+  const register = async (data: { email: string; full_name: string; password: string; phone?: string }) => {
+    setLoading(true);
+    try {
+      const res = await api.register(data);
+      setUser(res.user);
+      setToken(res.access_token);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    await login(email, 'Demo@123');
+  const demoLogin = async (role: 'CUSTOMER' | 'ADMIN' = 'CUSTOMER') => {
+    setLoading(true);
+    try {
+      const res = await api.demoLogin(role);
+      setUser(res.user);
+      setToken(res.access_token);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
-    localStorage.removeItem('eduintelli_token');
-    setToken(null);
+    api.clearToken();
     setUser(null);
+    setToken(null);
+  };
+
+  const refreshUser = async () => {
+    if (token) {
+      try {
+        const profile = await api.getProfile();
+        setUser(profile);
+        localStorage.setItem('smartbank_user', JSON.stringify(profile));
+      } catch (e) {
+        console.error('Failed to refresh user profile', e);
+      }
+    }
   };
 
   return (
@@ -92,11 +101,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       value={{
         user,
         token,
-        isLoading,
+        isAuthenticated: !!user && !!token,
+        isAdmin: user?.role === 'ADMIN',
+        loading,
         login,
-        quickLoginAs,
+        register,
+        demoLogin,
         logout,
-        isAuthenticated: !!user,
+        refreshUser,
       }}
     >
       {children}
@@ -104,7 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 };
 
-export const useAuth = (): AuthContextType => {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
