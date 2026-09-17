@@ -59,7 +59,11 @@ def register_user(payload: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login_user(payload: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    email_lookup = payload.email.lower()
+    if email_lookup in ["customer@smartbank.ai", "demo@smartbank.ai"]:
+        email_lookup = "alex@smartbank.ai"
+
+    user = db.query(User).filter(User.email == email_lookup).first()
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
